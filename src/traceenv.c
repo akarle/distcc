@@ -86,6 +86,7 @@ void dcc_set_trace_from_env(void)
     }
 
     rs_add_logger(rs_logger_file, level, NULL, fd);
+    signal_handler_log_fd = fd;
 
     if (failed_to_open_logfile) {
         rs_log_error("failed to open logfile %s: %s",

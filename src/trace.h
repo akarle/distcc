@@ -60,6 +60,7 @@
 
 
 #include <stdarg.h>
+#include <unistd.h>
 
 /* unconditionally on */
 #define DO_RS_TRACE
@@ -228,6 +229,12 @@ extern int rs_trace_level;
  **/
 extern const char *rs_program_name;
 
+/**
+ * File descriptor for dcc_log_signal_termination (set if a log file is given)
+ */
+extern int signal_handler_log_fd;
+
 void dcc_job_summary_clear(void);
 void dcc_job_summary(void);
 void dcc_job_summary_append(const char *s);
+void dcc_log_signal_termination(int);

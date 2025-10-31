@@ -120,10 +120,8 @@ static void dcc_daemon_terminate(int whichsig)
 
     am_parent = getpid() == dcc_master_pid;
 
-    /* syslog is not safe from a signal handler */
-    if (am_parent && !rs_trace_syslog) {
-        /* strsignal is unsafe / malloc's on macOS */
-        rs_log_info("terminated by signal %d", whichsig);
+    if (am_parent) {
+        dcc_log_signal_termination(whichsig);
     }
 
     dcc_cleanup_tempfiles_from_signal_handler();

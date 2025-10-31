@@ -58,6 +58,8 @@ static struct rs_logger_list *logger_list = NULL;
 int rs_trace_syslog = FALSE;
 int rs_trace_level = RS_LOG_NOTICE;
 
+int signal_handler_log_fd = STDERR_FILENO;
+
 #ifdef UNUSED
 /* nothing */
 #elif defined(__GNUC__)
@@ -93,6 +95,8 @@ static const char *rs_severities[] = {
 void rs_remove_all_loggers(void)
 {
     struct rs_logger_list *l, *next;
+
+    signal_handler_log_fd = STDERR_FILENO;
 
     for (l = logger_list; l; l = next) {
         next = l -> next;       /* save before destruction */
@@ -336,6 +340,34 @@ rs_logger_file(int flags, const char *fn, char const *fmt, va_list va,
     }
 }
 
+/* this logger is specifically intended for signal handlers where printf(3)
+ * is unsafe to call (see signal-safety(7)) */
+/* void */
+/* rs_sigsafe_log_stderr(const int nargs, ...) */
+/* { */
+/*     /1* NOTE NO TRAILING NUL *1/ */
+/*     char buf[4090]; */
+/*     int i; */
+/*     size_t len; */
+/*     ssize_t ret; */
+
+/*     va_list args; */
+/*     va_start(args, nargs); */
+/*     for (i = 0; i < nargs; i++) { */
+
+
+/*     } */
+
+/*     len = strlen(buf); */
+/*     if (len > (int) sizeof buf - 2) */
+/*         len = (int) sizeof buf - 2; */
+/*     strcpy(&buf[len], "\n"); */
+
+/*     write(STDERR_FILENO, buf, len + 1); */
+/* } */
+
+
+
 
 
 /* ======================================================================== */
@@ -447,4 +479,33 @@ void dcc_job_summary_append(const char *s) {
     int64_t len = (4096 * 4 - 1) - strlen(job_summary);
     if (len > 0)
         strncat(job_summary, s, len);
+}
+
+/* all logger_list loggers are unsafe in a signal handler due
+ * to printf(3); */
+void
+dcc_log_signal_termination(int whichsig)
+{
+    char buf[64];
+    size_t len;
+    ssize_t ret;
+    if (whichsig > 63) {
+        strcpy(buf, "terminated by unknown signal");
+        len = strlen(buf);
+    } else {
+        strcpy(buf, "terminated by signal ");
+        len = strlen(buf);
+        if (whichsig > 9)
+            buf[len++] = (whichsig / 10) + '0';
+        buf[len++] = (whichsig % 10) + '0';
+    }
+
+    if (len > (int) sizeof buf - 2)
+        len = (int) sizeof buf - 2;
+    strcpy(&buf[len], "\n");
+
+    ret = write(signal_handler_log_fd, buf, len + 1);
+    if (ret == -1 && signal_handler_log_fd != STDERR_FILENO) {
+      ret = write(STDERR_FILENO, buf, len + 1);
+    }
 }
